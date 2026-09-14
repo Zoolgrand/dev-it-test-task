@@ -6,7 +6,10 @@ export type SuggestionInput = {
 };
 
 export type SuggestionOutcome =
-  { status: "ok"; suggestion: Suggestion } | { status: "unusable" } | { status: "unavailable" };
+  | { status: "ok"; suggestion: Suggestion }
+  | { status: "unusable" }
+  | { status: "rate_limited" }
+  | { status: "unavailable" };
 
 export type SuggestionProvider = {
   readonly mode: "live" | "mock";

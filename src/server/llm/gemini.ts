@@ -1,5 +1,5 @@
 import "server-only";
-import { GoogleGenAI } from "@google/genai";
+import { ApiError, GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 import {
   DESCRIPTION_MAX_LENGTH,
@@ -68,11 +68,17 @@ function delay(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
+export function isRateLimitError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 429;
+}
+
+type CallResult = { status: "ok"; text: string } | { status: "rate_limited" } | { status: "error" };
+
 async function callModel(
   ai: GoogleGenAI,
   prompt: string,
   signal: AbortSignal,
-): Promise<string | null> {
+): Promise<CallResult> {
   try {
     const response = await ai.models.generateContent({
       model: MODEL,
@@ -80,9 +86,9 @@ async function callModel(
       config: { abortSignal: signal },
     });
 
-    return response.text ?? null;
-  } catch {
-    return null;
+    return response.text ? { status: "ok", text: response.text } : { status: "error" };
+  } catch (error) {
+    return isRateLimitError(error) ? { status: "rate_limited" } : { status: "error" };
   }
 }
 
@@ -90,49 +96,53 @@ async function callModelWithRetry(
   ai: GoogleGenAI,
   prompt: string,
   signal: AbortSignal,
-): Promise<string | null> {
+): Promise<CallResult> {
   const first = await callModel(ai, prompt, signal);
 
-  if (first !== null) {
+  if (first.status !== "error") {
     return first;
   }
 
   try {
     await delay(TRANSIENT_RETRY_DELAY_MS, signal);
   } catch {
-    return null;
+    return { status: "error" };
   }
 
   return callModel(ai, prompt, signal);
 }
 
+function outcomeFromFailure(result: CallResult): SuggestionOutcome {
+  return { status: result.status === "rate_limited" ? "rate_limited" : "unavailable" };
+}
+
 export function createGeminiSuggestionProvider(apiKey: string): SuggestionProvider {
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey, httpOptions: { retryOptions: { attempts: 1 } } });
 
   return {
     mode: "live",
     async suggest(input: SuggestionInput, signal: AbortSignal): Promise<SuggestionOutcome> {
       const prompt = buildPrompt(input);
-      const raw = await callModelWithRetry(ai, prompt, signal);
+      const first = await callModelWithRetry(ai, prompt, signal);
 
-      if (raw === null) {
-        return { status: "unavailable" };
+      if (first.status !== "ok") {
+        return outcomeFromFailure(first);
       }
 
-      const first = parseSuggestion(raw);
+      const parsed = parseSuggestion(first.text);
 
-      if (first.status === "ok") {
-        return first;
+      if (parsed.status === "ok") {
+        return parsed;
       }
 
-      const violation = describeViolation(raw);
+      const violation = describeViolation(first.text);
       const retryPrompt = violation
         ? `${prompt}\n\nПопередня відповідь порушила обмеження (${violation}). Виправ і поверни лише коректний JSON.`
         : prompt;
 
-      const retryRaw = await callModelWithRetry(ai, retryPrompt, signal);
+      const retry = await callModelWithRetry(ai, retryPrompt, signal);
 
-      return retryRaw === null ? { status: "unavailable" } : parseSuggestion(retryRaw);
+      return retry.status === "ok" ? parseSuggestion(retry.text) : outcomeFromFailure(retry);
     },
   };
 }

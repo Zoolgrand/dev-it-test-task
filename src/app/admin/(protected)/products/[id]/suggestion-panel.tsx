@@ -52,7 +52,9 @@ export function SuggestionPanel({
 
       if (!response.ok) {
         setState({ status: "idle" });
-        toast.error(messages.suggestion.error);
+        toast.error(
+          response.status === 429 ? messages.suggestion.rateLimited : messages.suggestion.error,
+        );
         return;
       }
 

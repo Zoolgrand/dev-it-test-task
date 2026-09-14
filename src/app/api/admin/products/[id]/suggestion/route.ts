@@ -3,6 +3,7 @@ import { requireAdmin } from "@/server/auth/require-admin";
 import {
   notFound,
   providerUnavailable,
+  rateLimited,
   unauthorized,
   validationFailed,
 } from "@/server/http/responses";
@@ -37,6 +38,8 @@ export async function POST(
       return Response.json({ suggestion: outcome.suggestion, mode: provider.mode });
     case "unusable":
       return validationFailed({});
+    case "rate_limited":
+      return rateLimited();
     case "unavailable":
       return providerUnavailable();
   }
