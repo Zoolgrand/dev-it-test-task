@@ -6,3 +6,52 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Product {
+  id             String             @id @default(cuid())
+  slug           String             @unique
+  name           String
+  description    String
+  seoTitle       String
+  seoDescription String
+  status         ProductStatus      @default(draft)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  attributes     ProductAttribute[]
+
+  @@index([status])
+}
+
+model ProductAttribute {
+  id        String  @id @default(cuid())
+  productId String
+  name      String
+  value     String
+  position  Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, position])
+}
+
+enum ProductStatus {
+  draft
+  published
+}

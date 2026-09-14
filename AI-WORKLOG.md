@@ -2,11 +2,12 @@
 
 ## Tools and models
 
-| Tool        | Model         | Contribution                                                          |
-| ----------- | ------------- | --------------------------------------------------------------------- |
-| Claude Code | Claude Opus 5 | stack research, technical design, implementation plan, code and tests |
+| Tool        | Model           | Contribution                                                 |
+| ----------- | --------------- | ------------------------------------------------------------ |
+| Claude Code | Claude Opus 5   | Stack research, technical design, phased implementation plan |
+| Claude Code | Claude Sonnet 5 | Implementation of the plan's phases: code and tests          |
 
-The model produced the design, the plan, and the code. My contribution was the framing: scope and constraints, choosing between the options it proposed, rejecting several of its recommendations, the coding practices recorded in `CLAUDE.md`, and verifying the result. Every dependency version came from querying the registry rather than from the model's memory, which turned out to matter.
+Opus 5 produced the technical design and, through a brainstorming session that resolved several open questions (seed and admin credentials, the status field in the editor, the test database for Playwright, per-phase execution model), a phased implementation plan in `PLAN.md`: ten phases, each scoped to a single commit and a single fresh session, with exact files to touch, ready-to-run test code, and a checklist of acceptance criteria closing every phase. That plan is what Sonnet 5 executes phase by phase. My contribution was the framing: scope and constraints, choosing between the options proposed, rejecting several recommendations, the coding practices recorded in `CLAUDE.md`, and verifying the result at every step. Every dependency version came from querying the registry rather than from a model's memory, which turned out to matter.
 
 ## Decisions about AI-generated code
 

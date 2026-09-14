@@ -68,6 +68,32 @@ const eslintConfig = defineConfig([
     },
   },
   {
+    files: ["src/components/**/*.{ts,tsx}", "src/lib/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            { group: ["@/server/**"], message: "components/ and lib/ may import domain/ only." },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-non-null-assertion": "error",
+      "@typescript-eslint/explicit-module-boundary-types": "error",
+      "react/no-danger": "error",
+    },
+  },
+  {
+    files: ["tests/**/*.ts", "e2e/**/*.ts"],
+    rules: { "@typescript-eslint/no-non-null-assertion": "off" },
+  },
+  {
     files: ["src/**/*.{ts,tsx}"],
     plugins: { "import-x": importX },
     settings: {
