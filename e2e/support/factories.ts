@@ -1,25 +1,29 @@
 import { randomUUID } from "node:crypto";
-import { prisma } from "@/server/db";
-import { hashPassword } from "@/server/auth/password";
-import type { ProductStatus } from "@/domain/product/status";
-import type { ProductRow } from "@/server/products/mappers";
+import { db } from "./db";
 
-export async function truncateAll(): Promise<void> {
-  await prisma.$executeRawUnsafe(
-    `TRUNCATE TABLE "ProductAttribute", "Product", "Session", "User" RESTART IDENTITY CASCADE`,
+export type E2eProductRow = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  seoTitle: string;
+  seoDescription: string;
+  status: "draft" | "published";
+  createdAt: Date;
+  updatedAt: Date;
+  attributes: Array<{
+    id: string;
+    productId: string;
+    name: string;
+    value: string;
+    position: number;
+  }>;
+};
+
+export async function truncateProducts(): Promise<void> {
+  await db.$executeRawUnsafe(
+    `TRUNCATE TABLE "ProductAttribute", "Product" RESTART IDENTITY CASCADE`,
   );
-}
-
-export async function createAdmin(
-  overrides: { email?: string; password?: string } = {},
-): Promise<{ id: string; email: string; password: string }> {
-  const email = overrides.email ?? `admin-${randomUUID()}@example.com`;
-  const password = overrides.password ?? "factory-password";
-  const user = await prisma.user.create({
-    data: { email, passwordHash: await hashPassword(password) },
-  });
-
-  return { id: user.id, email, password };
 }
 
 export async function createProduct(
@@ -29,13 +33,13 @@ export async function createProduct(
     description: string;
     seoTitle: string;
     seoDescription: string;
-    status: ProductStatus;
+    status: "draft" | "published";
     attributes: Array<{ name: string; value: string }>;
   }> = {},
-): Promise<ProductRow> {
+): Promise<E2eProductRow> {
   const attributes = overrides.attributes ?? [{ name: "Матеріал", value: "Сталь" }];
 
-  return prisma.product.create({
+  return db.product.create({
     data: {
       slug: overrides.slug ?? `product-${randomUUID()}`,
       name: overrides.name ?? "Тестовий товар",

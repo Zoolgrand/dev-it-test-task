@@ -51,3 +51,18 @@ test("the session cookie is not readable from JavaScript", async ({ request }) =
   expect(cookie).toContain("HttpOnly");
   expect(cookie).toMatch(/SameSite=Lax/i);
 });
+
+test("the admin product list refuses an unauthenticated request", async ({ request }) => {
+  const response = await request.get("/api/admin/products");
+
+  expect(response.status()).toBe(401);
+  expect((await response.json()).error.code).toBe("unauthorized");
+});
+
+test("a direct API call bypasses the proxy redirect and is still refused", async ({ request }) => {
+  const response = await request.get("/api/admin/products", {
+    headers: { cookie: "pcs_session=forged" },
+  });
+
+  expect(response.status()).toBe(401);
+});

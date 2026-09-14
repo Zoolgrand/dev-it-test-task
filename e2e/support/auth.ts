@@ -1,3 +1,7 @@
+import type { APIRequestContext, Page } from "@playwright/test";
+import { messages } from "../../src/lib/messages";
+import { E2E_ADMIN_EMAIL, E2E_ADMIN_PASSWORD } from "./constants";
+
 export const SESSION_COOKIE_NAME = "pcs_session";
 
 export function readSessionCookie(setCookieHeader: string | undefined): string {
@@ -12,4 +16,22 @@ export function readSessionCookie(setCookieHeader: string | undefined): string {
   }
 
   return match[1];
+}
+
+export async function logIn(request: APIRequestContext): Promise<void> {
+  const response = await request.post("/api/auth/login", {
+    data: { email: E2E_ADMIN_EMAIL, password: E2E_ADMIN_PASSWORD },
+  });
+
+  if (!response.ok()) {
+    throw new Error(`Fixture login failed with status ${response.status()}`);
+  }
+}
+
+export async function logInThroughUi(page: Page): Promise<void> {
+  await page.goto("/admin/login");
+  await page.getByLabel(messages.login.email).fill(E2E_ADMIN_EMAIL);
+  await page.getByLabel(messages.login.password).fill(E2E_ADMIN_PASSWORD);
+  await page.getByRole("button", { name: messages.login.submit }).click();
+  await page.waitForURL(/\/admin\/products/);
 }

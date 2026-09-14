@@ -16,5 +16,11 @@ export const messages = {
   },
   adminList: {
     heading: "Товари",
+    edit: "Редагувати",
+  },
+  product: {
+    name: "Назва",
+    status: "Статус",
+    attributes: "Характеристики",
   },
 } as const;
