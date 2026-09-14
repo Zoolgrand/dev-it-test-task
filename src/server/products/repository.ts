@@ -19,6 +19,21 @@ export async function findByIdForAdmin(id: string): Promise<ProductRow | null> {
   });
 }
 
+export async function findAllPublished(): Promise<ProductRow[]> {
+  return prisma.product.findMany({
+    where: { status: "published" },
+    orderBy: { name: "asc" },
+    include: { attributes: { orderBy: { position: "asc" } } },
+  });
+}
+
+export async function findPublishedBySlug(slug: string): Promise<ProductRow | null> {
+  return prisma.product.findFirst({
+    where: { slug, status: "published" },
+    include: { attributes: { orderBy: { position: "asc" } } },
+  });
+}
+
 export type UpdateContentInput = {
   id: string;
   expectedUpdatedAt: Date;

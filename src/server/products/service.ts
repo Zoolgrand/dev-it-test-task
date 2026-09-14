@@ -1,9 +1,15 @@
 import "server-only";
 import { productUpdateSchema } from "@/domain/product/schema";
 import type { ProductUpdate } from "@/domain/product/schema";
-import { findAllForAdmin, findByIdForAdmin, updateContent } from "./repository";
-import { toAdminProduct, toAdminProductListItem } from "./mappers";
-import type { AdminProduct, AdminProductListItem } from "./mappers";
+import {
+  findAllForAdmin,
+  findAllPublished,
+  findByIdForAdmin,
+  findPublishedBySlug,
+  updateContent,
+} from "./repository";
+import { toAdminProduct, toAdminProductListItem, toPublicProduct } from "./mappers";
+import type { AdminProduct, AdminProductListItem, PublicProduct } from "./mappers";
 
 export async function listAdminProducts(): Promise<AdminProductListItem[]> {
   const rows = await findAllForAdmin();
@@ -15,6 +21,18 @@ export async function getAdminProduct(id: string): Promise<AdminProduct | null> 
   const row = await findByIdForAdmin(id);
 
   return row ? toAdminProduct(row) : null;
+}
+
+export async function listPublishedProducts(): Promise<PublicProduct[]> {
+  const rows = await findAllPublished();
+
+  return rows.map(toPublicProduct);
+}
+
+export async function getPublishedProduct(slug: string): Promise<PublicProduct | null> {
+  const row = await findPublishedBySlug(slug);
+
+  return row ? toPublicProduct(row) : null;
 }
 
 export type UpdateOutcome =

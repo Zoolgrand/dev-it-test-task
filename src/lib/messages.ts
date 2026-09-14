@@ -18,6 +18,10 @@ export const messages = {
     heading: "Товари",
     edit: "Редагувати",
   },
+  catalog: {
+    heading: "Каталог товарів",
+    empty: "Тут поки немає жодного опублікованого товару",
+  },
   product: {
     name: "Назва",
     status: "Статус",
