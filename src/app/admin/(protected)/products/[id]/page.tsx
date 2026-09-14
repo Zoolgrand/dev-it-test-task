@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import { notFound } from "next/navigation";
 import { messages } from "@/lib/messages";
+import { getSuggestionAvailability } from "@/server/llm";
 import { getAdminProduct } from "@/server/products/service";
 import { ProductEditor } from "./editor";
 
@@ -13,6 +14,8 @@ export default async function AdminProductPage({
   if (!product) {
     notFound();
   }
+
+  const suggestionAvailability = getSuggestionAvailability();
 
   return (
     <>
@@ -28,7 +31,7 @@ export default async function AdminProductPage({
           ))}
         </dl>
       </section>
-      <ProductEditor product={product} />
+      <ProductEditor product={product} suggestionAvailability={suggestionAvailability} />
     </>
   );
 }

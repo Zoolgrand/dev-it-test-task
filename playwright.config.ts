@@ -17,7 +17,6 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : [["list"]],
-  globalSetup: "./e2e/support/global-setup.ts",
   use: {
     baseURL,
     trace: "on-first-retry",

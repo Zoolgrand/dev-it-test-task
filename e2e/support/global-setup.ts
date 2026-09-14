@@ -39,3 +39,7 @@ export default async function setup(): Promise<void> {
 
   await db.$disconnect();
 }
+
+if (process.argv[1]?.endsWith("global-setup.ts")) {
+  void setup();
+}

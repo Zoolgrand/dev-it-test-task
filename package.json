@@ -24,10 +24,11 @@
     "test:unit": "vitest run --project unit",
     "test:integration": "vitest run --project integration",
     "test:watch": "vitest",
-    "test:e2e": "next build && playwright test",
+    "test:e2e": "next build && tsx e2e/support/global-setup.ts && playwright test",
     "verify": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run test:e2e"
   },
   "dependencies": {
+    "@google/genai": "^2.22.0",
     "@node-rs/argon2": "^2.2.1",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "7.10.0",

@@ -13,6 +13,8 @@ import {
 import { productContentSchema } from "@/domain/product/schema";
 import { PRODUCT_STATUSES } from "@/domain/product/status";
 import type { ProductStatus } from "@/domain/product/status";
+import type { Suggestion } from "@/domain/product/suggestion";
+import type { SuggestionAvailability } from "@/server/llm";
 import type { AdminProduct } from "@/server/products/mappers";
 import { Button } from "@/components/ui/button";
 import { CharacterCounter } from "@/components/character-counter";
@@ -26,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { messages } from "@/lib/messages";
+import { SuggestionPanel } from "./suggestion-panel";
 
 type FormState = {
   description: string;
@@ -63,7 +66,13 @@ function isDirty(form: FormState, initial: FormState): boolean {
   );
 }
 
-export function ProductEditor({ product }: { product: AdminProduct }): ReactElement {
+export function ProductEditor({
+  product,
+  suggestionAvailability,
+}: {
+  product: AdminProduct;
+  suggestionAvailability: SuggestionAvailability;
+}): ReactElement {
   const [initial, setInitial] = useState<FormState>(() => toFormState(product));
   const [form, setForm] = useState<FormState>(() => toFormState(product));
   const [expectedUpdatedAt, setExpectedUpdatedAt] = useState(product.updatedAt);
@@ -81,6 +90,11 @@ export function ProductEditor({ product }: { product: AdminProduct }): ReactElem
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [dirty]);
+
+  function handleApplySuggestion(suggestion: Suggestion): void {
+    setForm((previous) => ({ ...previous, ...suggestion }));
+    setFieldErrors({});
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -135,6 +149,13 @@ export function ProductEditor({ product }: { product: AdminProduct }): ReactElem
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+      <SuggestionPanel
+        productId={product.id}
+        availability={suggestionAvailability}
+        dirty={dirty}
+        onApply={handleApplySuggestion}
+      />
+
       <div className="flex flex-col gap-2">
         <Label htmlFor="description">{messages.editor.description}</Label>
         <Textarea
