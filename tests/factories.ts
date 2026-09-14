@@ -5,9 +5,7 @@ import type { ProductStatus } from "@/domain/product/status";
 import type { ProductRow } from "@/server/products/mappers";
 
 export async function truncateAll(): Promise<void> {
-  await prisma.$executeRawUnsafe(
-    `TRUNCATE TABLE "ProductAttribute", "Product", "Session", "User" RESTART IDENTITY CASCADE`,
-  );
+  await prisma.$executeRaw`TRUNCATE TABLE "ProductAttribute", "Product", "Session", "User", "AttemptCounter" RESTART IDENTITY CASCADE`;
 }
 
 export async function createAdmin(

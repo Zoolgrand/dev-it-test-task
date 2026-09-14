@@ -3,6 +3,12 @@ import type { ProductContent } from "./schema";
 
 export type Suggestion = ProductContent;
 
+export type SuggestionMode = "live" | "mock";
+
+export type SuggestionAvailability =
+  | { status: "available"; mode: SuggestionMode }
+  | { status: "unavailable"; reason: "missing_api_key" };
+
 export type ParseResult = { status: "ok"; suggestion: Suggestion } | { status: "unusable" };
 
 const codeFencePattern = /^```(?:json)?\s*([\s\S]*?)\s*```$/;

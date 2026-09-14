@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { formatRelativeTime } from "@/lib/relative-time";
-import { selectPlural } from "@/lib/plural";
+import { formatRelativeTime } from "@/lib/formatting/relativeTime";
+import { selectPlural } from "@/lib/formatting/plural";
+import { formatPrice } from "@/lib/formatting/price";
 
 const forms = { one: "товар", few: "товари", many: "товарів" };
 
@@ -26,6 +27,16 @@ describe("relative time formatting", () => {
     const formatted = formatRelativeTime("2026-09-11T12:00:00.000Z", now);
 
     expect(formatted[0]).toBe(formatted[0]?.toUpperCase());
+  });
+});
+
+describe("price formatting", () => {
+  it("separates thousands with a non-breaking space, so a price never wraps mid-number", () => {
+    expect(formatPrice(8999)).toBe("8 999 ₴");
+  });
+
+  it("leaves a price below one thousand without a separator", () => {
+    expect(formatPrice(250)).toBe("250 ₴");
   });
 });
 

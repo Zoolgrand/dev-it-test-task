@@ -56,7 +56,30 @@ const eslintConfig = defineConfig([
     },
   },
   {
-    files: ["src/app/**/*.{ts,tsx}", "src/components/**/*.{ts,tsx}", "src/lib/**/*.{ts,tsx}"],
+    files: ["src/proxy.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/server/**"],
+              message:
+                "proxy.ts runs before every request; importing server/ drags the database client into its bundle. Use domain/.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: [
+      "src/app/**/*.{ts,tsx}",
+      "src/components/**/*.{ts,tsx}",
+      "src/hooks/**/*.{ts,tsx}",
+      "src/lib/**/*.{ts,tsx}",
+      "src/content/**/*.{ts,tsx}",
+    ],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -68,13 +91,21 @@ const eslintConfig = defineConfig([
     },
   },
   {
-    files: ["src/components/**/*.{ts,tsx}", "src/lib/**/*.{ts,tsx}"],
+    files: [
+      "src/components/**/*.{ts,tsx}",
+      "src/hooks/**/*.{ts,tsx}",
+      "src/lib/**/*.{ts,tsx}",
+      "src/content/**/*.{ts,tsx}",
+    ],
     rules: {
       "no-restricted-imports": [
         "error",
         {
           patterns: [
-            { group: ["@/server/**"], message: "components/ and lib/ may import domain/ only." },
+            {
+              group: ["@/server/**"],
+              message: "components/, hooks/, lib/ and content/ may import domain/ only.",
+            },
           ],
         },
       ],

@@ -1,6 +1,6 @@
 import "server-only";
 import { ApiError, GoogleGenAI } from "@google/genai";
-import { z } from "zod";
+import { firstFieldErrors } from "@/domain/fieldErrors";
 import {
   DESCRIPTION_MAX_LENGTH,
   SEO_DESCRIPTION_MAX_LENGTH,
@@ -8,6 +8,8 @@ import {
 } from "@/domain/product/limits";
 import { productContentSchema } from "@/domain/product/schema";
 import { parseSuggestion, stripCodeFence } from "@/domain/product/suggestion";
+import { MAX_MODEL_CALLS, withDeadline } from "./deadline";
+import { delay } from "./delay";
 import type { SuggestionInput, SuggestionOutcome, SuggestionProvider } from "./provider";
 
 const MODEL = "gemini-3.8-flash";
@@ -42,30 +44,13 @@ function describeViolation(raw: string): string | null {
     return null;
   }
 
-  const entries = Object.entries(z.flattenError(parsed.error).fieldErrors);
-  const [field, fieldMessages] = entries[0] ?? ["невідоме поле", []];
+  const [entry] = Object.entries(firstFieldErrors(parsed.error));
 
-  return `поле ${field}: ${(fieldMessages as string[])[0] ?? "не пройшло перевірку"}`;
-}
+  if (!entry) {
+    return "відповідь не пройшла перевірку";
+  }
 
-function delay(ms: number, signal: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal.aborted) {
-      reject(new DOMException("Aborted", "AbortError"));
-      return;
-    }
-
-    const timeout = setTimeout(resolve, ms);
-
-    signal.addEventListener(
-      "abort",
-      () => {
-        clearTimeout(timeout);
-        reject(new DOMException("Aborted", "AbortError"));
-      },
-      { once: true },
-    );
-  });
+  return `поле ${entry[0]}: ${entry[1]}`;
 }
 
 export function isRateLimitError(error: unknown): boolean {
@@ -92,14 +77,26 @@ async function callModel(
   }
 }
 
+function outcomeFromFailure(result: CallResult): SuggestionOutcome {
+  return { status: result.status === "rate_limited" ? "rate_limited" : "unavailable" };
+}
+
+type CallBudget = { remaining: number };
+
 async function callModelWithRetry(
   ai: GoogleGenAI,
   prompt: string,
   signal: AbortSignal,
+  budget: CallBudget,
 ): Promise<CallResult> {
+  if (budget.remaining <= 0) {
+    return { status: "error" };
+  }
+
+  budget.remaining -= 1;
   const first = await callModel(ai, prompt, signal);
 
-  if (first.status !== "error") {
+  if (first.status !== "error" || budget.remaining <= 0) {
     return first;
   }
 
@@ -109,11 +106,9 @@ async function callModelWithRetry(
     return { status: "error" };
   }
 
-  return callModel(ai, prompt, signal);
-}
+  budget.remaining -= 1;
 
-function outcomeFromFailure(result: CallResult): SuggestionOutcome {
-  return { status: result.status === "rate_limited" ? "rate_limited" : "unavailable" };
+  return callModel(ai, prompt, signal);
 }
 
 export function createGeminiSuggestionProvider(apiKey: string): SuggestionProvider {
@@ -121,28 +116,35 @@ export function createGeminiSuggestionProvider(apiKey: string): SuggestionProvid
 
   return {
     mode: "live",
-    async suggest(input: SuggestionInput, signal: AbortSignal): Promise<SuggestionOutcome> {
+    async suggest(input: SuggestionInput, callerSignal: AbortSignal): Promise<SuggestionOutcome> {
+      const { signal, done } = withDeadline(callerSignal);
+      const budget: CallBudget = { remaining: MAX_MODEL_CALLS };
       const prompt = buildPrompt(input);
-      const first = await callModelWithRetry(ai, prompt, signal);
 
-      if (first.status !== "ok") {
-        return outcomeFromFailure(first);
+      try {
+        const first = await callModelWithRetry(ai, prompt, signal, budget);
+
+        if (first.status !== "ok") {
+          return outcomeFromFailure(first);
+        }
+
+        const parsed = parseSuggestion(first.text);
+
+        if (parsed.status === "ok") {
+          return parsed;
+        }
+
+        const violation = describeViolation(first.text);
+        const retryPrompt = violation
+          ? `${prompt}\n\nПопередня відповідь порушила обмеження (${violation}). Виправ і поверни лише коректний JSON.`
+          : prompt;
+
+        const retry = await callModelWithRetry(ai, retryPrompt, signal, budget);
+
+        return retry.status === "ok" ? parseSuggestion(retry.text) : outcomeFromFailure(retry);
+      } finally {
+        done();
       }
-
-      const parsed = parseSuggestion(first.text);
-
-      if (parsed.status === "ok") {
-        return parsed;
-      }
-
-      const violation = describeViolation(first.text);
-      const retryPrompt = violation
-        ? `${prompt}\n\nПопередня відповідь порушила обмеження (${violation}). Виправ і поверни лише коректний JSON.`
-        : prompt;
-
-      const retry = await callModelWithRetry(ai, retryPrompt, signal);
-
-      return retry.status === "ok" ? parseSuggestion(retry.text) : outcomeFromFailure(retry);
     },
   };
 }

@@ -10,15 +10,16 @@ import {
   SquarePen,
   User,
 } from "lucide-react";
-import { messages } from "@/lib/messages";
-import { requireAdmin } from "@/server/auth/require-admin";
-import { LogoutButton } from "./logout-button";
-import { AdminMobileNav } from "./mobile-nav";
+import { brandMessages } from "@/content/messages/brand";
+import { navMessages } from "@/content/messages/nav";
+import { requireAdmin } from "@/server/auth/requireAdmin";
+import { LogoutButton } from "./logoutButton";
+import { AdminMobileNav } from "./mobileNav";
 
 const sidebarSections = [
-  { label: messages.nav.descriptions, Icon: FileText },
-  { label: messages.nav.attributes, Icon: SlidersHorizontal },
-  { label: messages.nav.localization, Icon: Languages },
+  { label: navMessages.descriptions, Icon: FileText },
+  { label: navMessages.attributes, Icon: SlidersHorizontal },
+  { label: navMessages.localization, Icon: Languages },
 ];
 
 const inactiveItemClassName =
@@ -45,10 +46,10 @@ export default async function AdminLayout({
             </div>
             <div className="flex items-center gap-[10px]">
               <span className="text-headline-sm tracking-tight text-on-surface">
-                {messages.brand.name}
+                {brandMessages.name}
               </span>
               <span className="hidden rounded-full border border-outline-variant/40 bg-surface-container-high px-space-xs py-0.5 text-label-sm text-on-surface-variant md:inline">
-                {messages.brand.version}
+                {brandMessages.version}
               </span>
             </div>
           </div>
@@ -62,7 +63,7 @@ export default async function AdminLayout({
               className="flex size-8 items-center justify-center rounded-full bg-primary text-on-primary"
             >
               <User className="size-[18px]" aria-hidden />
-              <span className="sr-only">{messages.nav.account}</span>
+              <span className="sr-only">{navMessages.account}</span>
             </span>
           </div>
         </div>
@@ -76,7 +77,7 @@ export default async function AdminLayout({
             className="flex items-center gap-space-sm rounded-lg bg-primary px-space-md py-2 text-label-md text-on-primary"
           >
             <Package className="size-[18px]" aria-hidden />
-            {messages.nav.catalog}
+            {navMessages.catalog}
           </Link>
           {sidebarSections.map(({ label, Icon }) => (
             <span key={label} aria-disabled className={inactiveItemClassName}>
@@ -88,7 +89,7 @@ export default async function AdminLayout({
         <div className="mt-auto flex flex-col gap-1 border-t border-outline-variant/30 pt-space-md">
           <span aria-disabled className={inactiveItemClassName}>
             <Settings className="size-[18px]" aria-hidden />
-            {messages.nav.settings}
+            {navMessages.settings}
           </span>
         </div>
       </aside>

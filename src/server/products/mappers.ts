@@ -1,55 +1,23 @@
-import type { ProductStatus } from "@/domain/product/status";
+import type {
+  AdminProduct,
+  AdminProductListItem,
+  ProductAttributeView,
+  PublicProduct,
+} from "@/domain/product/dto";
+import type { Prisma } from "../../../prisma/generated/client";
 
-export type ProductRow = {
-  id: string;
-  slug: string;
-  name: string;
-  description: string;
-  seoTitle: string;
-  seoDescription: string;
-  status: ProductStatus;
-  createdAt: Date;
-  updatedAt: Date;
-  attributes: Array<{
-    id: string;
-    productId: string;
-    name: string;
-    value: string;
-    position: number;
-  }>;
-};
+export type ProductRow = Prisma.ProductGetPayload<{ include: { attributes: true } }>;
 
-export type ProductAttributeView = { id: string; name: string; value: string };
-
-export type AdminProductListItem = {
-  id: string;
-  slug: string;
-  name: string;
-  category: string | null;
-  status: ProductStatus;
-  updatedAt: string;
-};
-
-export type AdminProduct = {
-  id: string;
-  slug: string;
-  name: string;
-  description: string;
-  seoTitle: string;
-  seoDescription: string;
-  status: ProductStatus;
-  updatedAt: string;
-  attributes: ProductAttributeView[];
-};
-
-export type PublicProduct = {
-  slug: string;
-  name: string;
-  description: string;
-  seoTitle: string;
-  seoDescription: string;
-  attributes: ProductAttributeView[];
-};
+export type ProductListRow = Prisma.ProductGetPayload<{
+  select: {
+    id: true;
+    slug: true;
+    name: true;
+    status: true;
+    updatedAt: true;
+    attributes: { select: { name: true } };
+  };
+}>;
 
 function toAttributeViews(attributes: ProductRow["attributes"]): ProductAttributeView[] {
   return attributes.map((attribute) => ({
@@ -59,7 +27,7 @@ function toAttributeViews(attributes: ProductRow["attributes"]): ProductAttribut
   }));
 }
 
-export function toAdminProductListItem(row: ProductRow): AdminProductListItem {
+export function toAdminProductListItem(row: ProductListRow): AdminProductListItem {
   return {
     id: row.id,
     slug: row.slug,
@@ -91,6 +59,7 @@ export function toPublicProduct(row: ProductRow): PublicProduct {
     description: row.description,
     seoTitle: row.seoTitle,
     seoDescription: row.seoDescription,
+    createdAt: row.createdAt.toISOString(),
     attributes: toAttributeViews(row.attributes),
   };
 }

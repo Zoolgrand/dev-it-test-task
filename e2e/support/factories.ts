@@ -21,9 +21,7 @@ export type E2eProductRow = {
 };
 
 export async function truncateProducts(): Promise<void> {
-  await db.$executeRawUnsafe(
-    `TRUNCATE TABLE "ProductAttribute", "Product" RESTART IDENTITY CASCADE`,
-  );
+  await db.$executeRaw`TRUNCATE TABLE "ProductAttribute", "Product", "AttemptCounter" RESTART IDENTITY CASCADE`;
 }
 
 export async function createProduct(

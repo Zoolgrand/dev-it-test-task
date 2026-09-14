@@ -1,5 +1,4 @@
 import "server-only";
-import { z } from "zod";
 import type { ApiErrorBody, ApiErrorCode, FieldErrors } from "@/domain/errors";
 
 function errorResponse(
@@ -23,6 +22,14 @@ export function notFound(): Response {
   return errorResponse("not_found", "Не знайдено", 404);
 }
 
+export function malformedBody(): Response {
+  return errorResponse("malformed_body", "Тіло запиту не є коректним JSON", 400);
+}
+
+export function payloadTooLarge(): Response {
+  return errorResponse("payload_too_large", "Тіло запиту завелике", 413);
+}
+
 export function validationFailed(fieldErrors: FieldErrors): Response {
   return errorResponse(
     "validation_failed",
@@ -42,12 +49,4 @@ export function rateLimited(): Response {
 
 export function providerUnavailable(): Response {
   return errorResponse("provider_unavailable", "Сервіс тимчасово недоступний", 503);
-}
-
-export function fieldErrorsFromZodError(error: z.ZodError): FieldErrors {
-  const flattened = z.flattenError(error).fieldErrors;
-
-  return Object.fromEntries(
-    Object.entries(flattened).map(([field, messages]) => [field, (messages as string[])[0] ?? ""]),
-  );
 }

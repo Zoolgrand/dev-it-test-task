@@ -1,18 +1,46 @@
 import "server-only";
 import { prisma } from "@/server/db";
 import { consumeDummyVerification, verifyPassword } from "./password";
-import { createRateLimiter } from "./rate-limit";
-import { createSession, deleteSession } from "./session";
+import { createAttemptThrottle } from "@/server/throttle";
+import { createSession, deleteSession, deleteExpiredSessions } from "./session";
 
-const loginRateLimiter = createRateLimiter({ limit: 5, windowMs: 15 * 60 * 1000 });
+export const EMAIL_ATTEMPT_LIMIT = 5;
+export const IP_ATTEMPT_LIMIT = 20;
+const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
+
+const emailThrottle = createAttemptThrottle({
+  scope: "email",
+  limit: EMAIL_ATTEMPT_LIMIT,
+  windowMs: ATTEMPT_WINDOW_MS,
+});
+
+const ipThrottle = createAttemptThrottle({
+  scope: "ip",
+  limit: IP_ATTEMPT_LIMIT,
+  windowMs: ATTEMPT_WINDOW_MS,
+});
+
+export type LoginInput = { email: string; password: string; ip: string | null };
 
 export type LoginOutcome =
-  | { status: "ok"; sessionId: string; expiresAt: Date }
+  | { status: "ok"; token: string; expiresAt: Date }
   | { status: "invalid_credentials" }
   | { status: "rate_limited" };
 
-export async function login(input: { email: string; password: string }): Promise<LoginOutcome> {
-  if (!loginRateLimiter.isAllowed(input.email)) {
+async function recordFailure(input: LoginInput): Promise<void> {
+  await Promise.all([
+    emailThrottle.recordAttempt(input.email),
+    input.ip === null ? Promise.resolve() : ipThrottle.recordAttempt(input.ip),
+  ]);
+}
+
+export async function login(input: LoginInput): Promise<LoginOutcome> {
+  const [emailAllowed, ipAllowed] = await Promise.all([
+    emailThrottle.isAllowed(input.email),
+    input.ip === null ? Promise.resolve(true) : ipThrottle.isAllowed(input.ip),
+  ]);
+
+  if (!emailAllowed || !ipAllowed) {
     return { status: "rate_limited" };
   }
 
@@ -20,23 +48,22 @@ export async function login(input: { email: string; password: string }): Promise
 
   if (!user) {
     await consumeDummyVerification(input.password);
-    loginRateLimiter.recordFailure(input.email);
+    await recordFailure(input);
     return { status: "invalid_credentials" };
   }
 
-  const isValid = await verifyPassword(user.passwordHash, input.password);
-
-  if (!isValid) {
-    loginRateLimiter.recordFailure(input.email);
+  if (!(await verifyPassword(user.passwordHash, input.password))) {
+    await recordFailure(input);
     return { status: "invalid_credentials" };
   }
 
-  loginRateLimiter.reset(input.email);
+  await emailThrottle.reset(input.email);
   const session = await createSession(user.id);
+  await Promise.all([emailThrottle.sweepExpired(), deleteExpiredSessions()]);
 
-  return { status: "ok", sessionId: session.id, expiresAt: session.expiresAt };
+  return { status: "ok", token: session.token, expiresAt: session.expiresAt };
 }
 
-export async function logout(sessionId: string): Promise<void> {
-  await deleteSession(sessionId);
+export async function logout(token: string): Promise<void> {
+  await deleteSession(token);
 }

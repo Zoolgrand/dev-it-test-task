@@ -36,11 +36,13 @@ describe("database seed", () => {
 
   it("produces the same data when run twice", async () => {
     await seed({ adminEmail: "admin@example.com", adminPassword: "local-dev-password" });
+    const attributesAfterFirstRun = await prisma.productAttribute.count();
+
     await seed({ adminEmail: "admin@example.com", adminPassword: "local-dev-password" });
 
     expect(await prisma.user.count()).toBe(1);
     expect(await prisma.product.count()).toBe(3);
-    expect(await prisma.productAttribute.count()).toBe(await prisma.productAttribute.count());
+    expect(await prisma.productAttribute.count()).toBe(attributesAfterFirstRun);
   });
 
   it("gives every product at least one attribute", async () => {

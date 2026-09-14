@@ -18,12 +18,16 @@ Run `npm run verify` before considering any change finished. Never claim work pa
 
 Three layers, each with a single direction of dependency:
 
-| Layer                         | Contains                                         | May import           |
-| ----------------------------- | ------------------------------------------------ | -------------------- |
-| `src/domain/`                 | validation schemas, types, pure rules            | nothing              |
-| `src/server/`                 | Prisma, repositories, services, auth, LLM client | `domain/`            |
-| `src/app/`                    | pages, route handlers                            | `domain/`, `server/` |
-| `src/components/`, `src/lib/` | presentational components and utilities          | `domain/`            |
+| Layer                                                       | Contains                                             | May import           |
+| ----------------------------------------------------------- | ---------------------------------------------------- | -------------------- |
+| `src/domain/`                                               | validation schemas, types, pure rules                | nothing              |
+| `src/server/`                                               | Prisma, repositories, services, auth, LLM client     | `domain/`            |
+| `src/app/`                                                  | pages, route handlers                                | `domain/`, `server/` |
+| `src/components/`, `src/hooks/`, `src/lib/`, `src/content/` | presentational components, hooks, utilities, UI copy | `domain/`            |
+
+Non-route files colocated with a route live in a `_components/` folder, which Next never routes. Shared
+components live in `src/components/` and are imported through `@/`, never through a relative climb out of a
+route segment.
 
 Database access belongs in `src/server/` only. UI code must never import Prisma directly.
 
@@ -48,7 +52,8 @@ A boundary rule that does not fail on a real violation is worthless. After chang
 
 - Server Components by default. Add `"use client"` only for real interactivity, and push it as deep as possible: a leaf input, not the page.
 - Route handlers stay thin: parse, authorize, delegate to a service, map the result to a response. No business logic lives there.
-- Every protected route handler performs its own authorization check. `middleware.ts` is an optimistic redirect for UX and is never the only guard, because direct API calls bypass it.
+- Every protected route handler performs its own authorization check. `src/proxy.ts` is an optimistic redirect for UX and is never the only guard, because direct API calls bypass it.
+- A `loading.tsx` starts streaming the segment, which commits a 200 before the page runs. Never place one above a route that answers with `notFound()`, or the 404 becomes a soft 404.
 - SEO metadata comes from `generateMetadata`, never from mutating `document.title`.
 - `dangerouslySetInnerHTML` is not used anywhere in this project. Stored content renders as text.
 - No secret is ever exposed through a `NEXT_PUBLIC_` variable.

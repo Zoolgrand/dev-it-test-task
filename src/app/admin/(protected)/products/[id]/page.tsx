@@ -2,13 +2,13 @@ import type { ReactElement } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Eye, RefreshCw } from "lucide-react";
-import { ProductStatusBadge } from "@/components/product-status-badge";
-import { messages } from "@/lib/messages";
-import { formatRelativeTime } from "@/lib/relative-time";
+import { ProductStatusBadge } from "@/components/productStatusBadge";
+import { editorMessages } from "@/content/messages/editor";
+import { RelativeTime } from "@/components/relativeTime";
 import { getSuggestionAvailability } from "@/server/llm";
 import { getAdminProduct } from "@/server/products/service";
 import { ProductEditor } from "./editor";
-import { MoreActionsButton, ProductGallery } from "./editor-controls";
+import { MoreActionsButton, ProductGallery } from "./_components/pageHeaderActions";
 
 export default async function AdminProductPage({
   params,
@@ -31,10 +31,10 @@ export default async function AdminProductPage({
             className="flex items-center gap-1 transition-colors hover:text-primary"
           >
             <ArrowLeft className="size-4" aria-hidden />
-            <span>{messages.editor.backToList}</span>
+            <span>{editorMessages.backToList}</span>
           </Link>
           <span className="text-outline-variant">/</span>
-          <span className="text-on-surface">{messages.editor.breadcrumbCurrent}</span>
+          <span className="text-on-surface">{editorMessages.breadcrumbCurrent}</span>
         </div>
         <div className="flex flex-col justify-between gap-space-md pt-space-xs md:flex-row md:items-center">
           <div className="flex flex-wrap items-start gap-space-md md:items-center">
@@ -52,7 +52,7 @@ export default async function AdminProductPage({
               className="inline-flex items-center gap-1.5 rounded-lg bg-surface-container-low px-3 py-1.5 text-label-md text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface"
             >
               <Eye className="size-[18px]" aria-hidden />
-              <span>{messages.editor.viewOnSite}</span>
+              <span>{editorMessages.viewOnSite}</span>
             </Link>
             <MoreActionsButton />
           </div>
@@ -66,16 +66,16 @@ export default async function AdminProductPage({
           </span>
           <span className="flex min-w-0 flex-col">
             <span className="truncate text-label-sm font-semibold text-on-surface">
-              {messages.editor.erpHeading}
+              {editorMessages.erpHeading}
             </span>
             <span className="truncate font-mono text-code-sm text-on-surface-variant">
-              {messages.editor.erpUpdated} {formatRelativeTime(product.updatedAt).toLowerCase()}
+              {editorMessages.erpUpdated} <RelativeTime iso={product.updatedAt} />
             </span>
           </span>
         </div>
         <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-container px-space-xs py-0.5 font-mono text-code-sm text-on-surface-variant">
           <span className="size-1.5 rounded-full bg-tertiary" />
-          {messages.editor.erpActive}
+          {editorMessages.erpActive}
         </span>
       </section>
 

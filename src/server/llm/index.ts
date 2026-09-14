@@ -2,32 +2,45 @@ import "server-only";
 import { createGeminiSuggestionProvider } from "./gemini";
 import { mockSuggestionProvider } from "./mock";
 import type { SuggestionProvider } from "./provider";
+import type { SuggestionAvailability } from "@/domain/product/suggestion";
 
-export type SuggestionAvailability =
-  | { status: "available"; mode: "live" | "mock" }
+export type ResolvedSuggestionProvider =
+  | { status: "available"; provider: SuggestionProvider }
   | { status: "unavailable"; reason: "missing_api_key" };
 
-export function getSuggestionAvailability(): SuggestionAvailability {
-  if (process.env.LLM_MODE !== "live") {
-    return { status: "available", mode: "mock" };
+const liveProviders = new Map<string, SuggestionProvider>();
+
+function liveProviderFor(apiKey: string): SuggestionProvider {
+  const existing = liveProviders.get(apiKey);
+
+  if (existing) {
+    return existing;
   }
 
-  return process.env.GEMINI_API_KEY
-    ? { status: "available", mode: "live" }
-    : { status: "unavailable", reason: "missing_api_key" };
+  const provider = createGeminiSuggestionProvider(apiKey);
+  liveProviders.set(apiKey, provider);
+
+  return provider;
 }
 
-export function getSuggestionProvider(): SuggestionProvider {
+export function resolveSuggestionProvider(): ResolvedSuggestionProvider {
   if (process.env.LLM_MODE !== "live") {
-    return mockSuggestionProvider;
+    return { status: "available", provider: mockSuggestionProvider };
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
-    console.warn("LLM_MODE=live requires GEMINI_API_KEY; falling back to the mock provider");
-    return mockSuggestionProvider;
+    return { status: "unavailable", reason: "missing_api_key" };
   }
 
-  return createGeminiSuggestionProvider(apiKey);
+  return { status: "available", provider: liveProviderFor(apiKey) };
+}
+
+export function getSuggestionAvailability(): SuggestionAvailability {
+  const resolved = resolveSuggestionProvider();
+
+  return resolved.status === "available"
+    ? { status: "available", mode: resolved.provider.mode }
+    : { status: "unavailable", reason: resolved.reason };
 }

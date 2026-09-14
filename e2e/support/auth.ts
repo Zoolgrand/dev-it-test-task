@@ -1,5 +1,5 @@
 import type { APIRequestContext, Page } from "@playwright/test";
-import { messages } from "../../src/lib/messages";
+import { loginMessages } from "../../src/content/messages/login";
 import { E2E_ADMIN_EMAIL, E2E_ADMIN_PASSWORD } from "./constants";
 
 export const SESSION_COOKIE_NAME = "pcs_session";
@@ -34,8 +34,8 @@ export async function logIn(request: APIRequestContext): Promise<{ cookie: strin
 
 export async function logInThroughUi(page: Page): Promise<void> {
   await page.goto("/admin/login");
-  await page.getByLabel(messages.login.email).fill(E2E_ADMIN_EMAIL);
-  await page.getByLabel(messages.login.password).fill(E2E_ADMIN_PASSWORD);
-  await page.getByRole("button", { name: messages.login.submit }).click();
+  await page.getByLabel(loginMessages.email).fill(E2E_ADMIN_EMAIL);
+  await page.getByLabel(loginMessages.password).fill(E2E_ADMIN_PASSWORD);
+  await page.getByRole("button", { name: loginMessages.submit }).click();
   await page.waitForURL(/\/admin\/products/);
 }

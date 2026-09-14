@@ -1,6 +1,8 @@
 export type ApiErrorCode =
   | "unauthorized"
   | "not_found"
+  | "malformed_body"
+  | "payload_too_large"
   | "validation_failed"
   | "version_conflict"
   | "rate_limited"

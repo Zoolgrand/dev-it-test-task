@@ -1,14 +1,7 @@
 import type { NextRequest } from "next/server";
-import { requireAdmin } from "@/server/auth/require-admin";
-import {
-  notFound,
-  providerUnavailable,
-  rateLimited,
-  unauthorized,
-  validationFailed,
-} from "@/server/http/responses";
-import { getSuggestionProvider } from "@/server/llm";
-import { getAdminProduct } from "@/server/products/service";
+import { requireAdmin } from "@/server/auth/requireAdmin";
+import { notFound, providerUnavailable, rateLimited, unauthorized } from "@/server/http/responses";
+import { requestSuggestion } from "@/server/products/suggestionService";
 
 export async function POST(
   request: NextRequest,
@@ -21,25 +14,20 @@ export async function POST(
   }
 
   const { id } = await context.params;
-  const product = await getAdminProduct(id);
-
-  if (!product) {
-    return notFound();
-  }
-
-  const provider = getSuggestionProvider();
-  const outcome = await provider.suggest(
-    { name: product.name, attributes: product.attributes },
-    request.signal,
-  );
+  const outcome = await requestSuggestion({
+    productId: id,
+    userId: admin.id,
+    signal: request.signal,
+  });
 
   switch (outcome.status) {
     case "ok":
-      return Response.json({ suggestion: outcome.suggestion, mode: provider.mode });
-    case "unusable":
-      return validationFailed({});
+      return Response.json({ suggestion: outcome.suggestion, mode: outcome.mode });
+    case "not_found":
+      return notFound();
     case "rate_limited":
       return rateLimited();
+    case "unusable":
     case "unavailable":
       return providerUnavailable();
   }

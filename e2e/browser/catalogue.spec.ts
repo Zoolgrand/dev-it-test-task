@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { messages } from "../../src/lib/messages";
+import { catalogMessages } from "../../src/content/messages/catalog";
 import { db } from "../support/db";
 import { logIn } from "../support/auth";
 import { createProduct, truncateProducts } from "../support/factories";
@@ -96,5 +96,5 @@ test("the catalogue has no horizontal scrolling on a narrow screen", async ({ pa
 test("an empty catalogue explains itself instead of showing a blank page", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page.getByText(messages.catalog.empty)).toBeVisible();
+  await expect(page.getByText(catalogMessages.empty)).toBeVisible();
 });

@@ -1,15 +1,19 @@
 import type { ReactElement } from "react";
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { LayoutGrid } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { messages } from "@/lib/messages";
-import { LoginForm } from "./login-form";
+import { brandMessages } from "@/content/messages/brand";
+import { loginMessages } from "@/content/messages/login";
+import { LoginForm } from "./loginForm";
 
 export const metadata: Metadata = {
-  title: messages.login.heading,
+  title: loginMessages.heading,
 };
 
-export default function LoginPage(): ReactElement {
+export default async function LoginPage(): Promise<ReactElement> {
+  await connection();
+
   return (
     <main className="flex w-full flex-1 flex-col items-center bg-surface px-margin-mobile">
       <div className="flex w-full flex-col items-center py-space-xl md:py-[10vh]">
@@ -23,20 +27,20 @@ export default function LoginPage(): ReactElement {
               </div>
             </div>
             <span className="mb-1 text-label-sm font-semibold tracking-wider text-on-surface-variant uppercase">
-              {messages.brand.name}
+              {brandMessages.name}
             </span>
-            <h1 className="text-headline-md text-on-surface">{messages.login.heading}</h1>
+            <h1 className="text-headline-md text-on-surface">{loginMessages.heading}</h1>
             <p className="mt-1.5 max-w-[280px] text-body-sm text-on-surface-variant">
-              {messages.login.subtitle}
+              {loginMessages.subtitle}
             </p>
           </div>
           <LoginForm />
           <div className="mt-6 flex items-center justify-between border-t border-surface-container-highest pt-4 text-on-surface-variant">
             <div className="flex items-center gap-1.5">
               <span className="inline-block size-2 animate-pulse rounded-full bg-tertiary" />
-              <span className="text-body-sm">{messages.login.servicesOperational}</span>
+              <span className="text-body-sm">{loginMessages.servicesOperational}</span>
             </div>
-            <span className="font-mono text-code-sm">{messages.brand.version}</span>
+            <span className="font-mono text-code-sm">{brandMessages.version}</span>
           </div>
         </Card>
       </div>

@@ -1,20 +1,48 @@
+import { createHash } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { db } from "../support/db";
 import { readSessionCookie } from "../support/auth";
 import { E2E_ADMIN_EMAIL, E2E_ADMIN_PASSWORD } from "../support/constants";
+
+function digest(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
 
 test("logout removes the session so the cookie can never be replayed", async ({ request }) => {
   const login = await request.post("/api/auth/login", {
     data: { email: E2E_ADMIN_EMAIL, password: E2E_ADMIN_PASSWORD },
   });
   expect(login.status()).toBe(200);
-  const sessionId = readSessionCookie(login.headers()["set-cookie"]);
+  const token = readSessionCookie(login.headers()["set-cookie"]);
 
   await request.post("/api/auth/logout", {
-    headers: { cookie: `pcs_session=${sessionId}` },
+    headers: { cookie: `pcs_session=${token}` },
   });
 
-  expect(await db.session.findUnique({ where: { id: sessionId } })).toBeNull();
+  expect(await db.session.findUnique({ where: { tokenHash: digest(token) } })).toBeNull();
+});
+
+test("the cookie value itself is never written to the session table", async ({ request }) => {
+  const login = await request.post("/api/auth/login", {
+    data: { email: E2E_ADMIN_EMAIL, password: E2E_ADMIN_PASSWORD },
+  });
+  const token = readSessionCookie(login.headers()["set-cookie"]);
+
+  expect(await db.session.findUnique({ where: { tokenHash: token } })).toBeNull();
+  expect(await db.session.findUnique({ where: { tokenHash: digest(token) } })).not.toBeNull();
+});
+
+test("a session row copied out of the database cannot be used as a cookie", async ({ request }) => {
+  const login = await request.post("/api/auth/login", {
+    data: { email: E2E_ADMIN_EMAIL, password: E2E_ADMIN_PASSWORD },
+  });
+  const token = readSessionCookie(login.headers()["set-cookie"]);
+
+  const response = await request.get("/api/admin/products", {
+    headers: { cookie: `pcs_session=${digest(token)}` },
+  });
+
+  expect(response.status()).toBe(401);
 });
 
 test("login rejects a wrong password without revealing whether the email exists", async ({

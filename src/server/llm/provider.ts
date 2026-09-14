@@ -1,4 +1,4 @@
-import type { Suggestion } from "@/domain/product/suggestion";
+import type { Suggestion, SuggestionMode } from "@/domain/product/suggestion";
 
 export type SuggestionInput = {
   name: string;
@@ -12,6 +12,6 @@ export type SuggestionOutcome =
   | { status: "unavailable" };
 
 export type SuggestionProvider = {
-  readonly mode: "live" | "mock";
+  readonly mode: SuggestionMode;
   suggest(input: SuggestionInput, signal: AbortSignal): Promise<SuggestionOutcome>;
 };

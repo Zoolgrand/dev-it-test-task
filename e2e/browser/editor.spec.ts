@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { messages } from "../../src/lib/messages";
+import { editorMessages } from "../../src/content/messages/editor";
 import { SEO_TITLE_MAX_LENGTH } from "../../src/domain/product/limits";
 import { logIn, logInThroughUi } from "../support/auth";
 import { createProduct, truncateProducts } from "../support/factories";
@@ -11,12 +11,12 @@ test("a saved description survives a page reload", async ({ page }) => {
   await logInThroughUi(page);
   await page.goto(`/admin/products/${product.id}`);
 
-  await page.getByLabel(messages.editor.description).fill("Новий опис");
-  await page.getByRole("button", { name: messages.editor.save }).click();
-  await expect(page.getByRole("button", { name: messages.editor.saved })).toBeVisible();
+  await page.getByLabel(editorMessages.description).fill("Новий опис");
+  await page.getByRole("button", { name: editorMessages.save }).click();
+  await expect(page.getByRole("button", { name: editorMessages.saved })).toBeVisible();
   await page.reload();
 
-  await expect(page.getByLabel(messages.editor.description)).toHaveValue("Новий опис");
+  await expect(page.getByLabel(editorMessages.description)).toHaveValue("Новий опис");
 });
 
 test("a rejected save keeps what the user typed and is never shown as success", async ({
@@ -27,11 +27,11 @@ test("a rejected save keeps what the user typed and is never shown as success", 
   await page.goto(`/admin/products/${product.id}`);
   const tooLong = "я".repeat(SEO_TITLE_MAX_LENGTH + 1);
 
-  await page.getByLabel(messages.editor.seoTitle).fill(tooLong);
-  await page.getByRole("button", { name: messages.editor.save }).click();
+  await page.getByLabel(editorMessages.seoTitle).fill(tooLong);
+  await page.getByRole("button", { name: editorMessages.save }).click();
 
-  await expect(page.getByLabel(messages.editor.seoTitle)).toHaveValue(tooLong);
-  await expect(page.getByText(messages.editor.saved)).toBeHidden();
+  await expect(page.getByLabel(editorMessages.seoTitle)).toHaveValue(tooLong);
+  await expect(page.getByText(editorMessages.saved)).toBeHidden();
 });
 
 test("the save button stays disabled until something changes", async ({ page }) => {
@@ -39,11 +39,11 @@ test("the save button stays disabled until something changes", async ({ page }) 
   await logInThroughUi(page);
   await page.goto(`/admin/products/${product.id}`);
 
-  await expect(page.getByRole("button", { name: messages.editor.save })).toBeDisabled();
+  await expect(page.getByRole("button", { name: editorMessages.save })).toBeDisabled();
 
-  await page.getByLabel(messages.editor.description).fill("Змінений опис");
+  await page.getByLabel(editorMessages.description).fill("Змінений опис");
 
-  await expect(page.getByRole("button", { name: messages.editor.save })).toBeEnabled();
+  await expect(page.getByRole("button", { name: editorMessages.save })).toBeEnabled();
 });
 
 test("the name and the attributes cannot be edited", async ({ page }) => {
@@ -52,7 +52,7 @@ test("the name and the attributes cannot be edited", async ({ page }) => {
   await page.goto(`/admin/products/${product.id}`);
 
   await expect(page.getByText("Незмінна назва")).toBeVisible();
-  await expect(page.getByRole("textbox", { name: messages.editor.name })).toHaveCount(0);
+  await expect(page.getByRole("textbox", { name: editorMessages.name })).toHaveCount(0);
 });
 
 test("the editor is usable on a narrow screen without horizontal scrolling", async ({ page }) => {
@@ -66,7 +66,7 @@ test("the editor is usable on a narrow screen without horizontal scrolling", asy
   );
 
   expect(overflows).toBe(false);
-  await expect(page.getByRole("button", { name: messages.editor.save })).toBeVisible();
+  await expect(page.getByRole("button", { name: editorMessages.save })).toBeVisible();
 });
 
 test("a save based on a version another tab already replaced reports a conflict", async ({
@@ -88,8 +88,8 @@ test("a save based on a version another tab already replaced reports a conflict"
     headers: { cookie: auth.cookie },
   });
 
-  await page.getByLabel(messages.editor.description).fill("Зміна з цієї вкладки");
-  await page.getByRole("button", { name: messages.editor.save }).click();
+  await page.getByLabel(editorMessages.description).fill("Зміна з цієї вкладки");
+  await page.getByRole("button", { name: editorMessages.save }).click();
 
-  await expect(page.getByText(messages.editor.conflict)).toBeVisible();
+  await expect(page.getByText(editorMessages.conflict)).toBeVisible();
 });

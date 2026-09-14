@@ -22,6 +22,7 @@ describe("product mappers", () => {
     expect(Object.keys(toPublicProduct(row)).sort()).toMatchInlineSnapshot(`
       [
         "attributes",
+        "createdAt",
         "description",
         "name",
         "seoDescription",
@@ -29,6 +30,10 @@ describe("product mappers", () => {
         "slug",
       ]
     `);
+  });
+
+  it("carries the creation date as a string, so the catalogue can sort newest first", () => {
+    expect(toPublicProduct(row).createdAt).toBe("2026-01-01T00:00:00.000Z");
   });
 
   it("exposes exactly these fields to the admin editor", () => {

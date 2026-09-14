@@ -64,6 +64,38 @@ The boundaries are enforced rather than advisory:
 
 Authorization is checked in three independent places, and only one of them is authoritative. `src/proxy.ts` (Next.js 16's replacement for `middleware.ts`) redirects a visitor without a session cookie to the login page — this is an optimistic convenience and never a guard, because a direct API call bypasses it. Every protected page and every protected route handler calls `requireAdmin()`, which validates the session against the database on every request.
 
+### Sessions
+
+The session cookie carries 32 random bytes; the database stores only their SHA-256 digest. A dump of the `Session` table therefore hands an attacker nothing that can be replayed as a cookie, and a lookup stays a single indexed read on the primary key. The digest is not salted and needs no work factor: the input is already full-entropy random, so there is nothing to brute-force or precompute. The migration that introduced this deletes the sessions issued before it, because a plain-text token cannot be converted into the token it hashes from — every open session is signed out once on deploy.
+
+### Content Security Policy
+
+The policy is built in one place, `src/domain/security/csp.ts`, and set by the proxy on every response.
+
+The admin area gets a fresh nonce per request: `script-src 'self' 'nonce-…' 'strict-dynamic'`, with no `'unsafe-inline'`. Next.js stamps that nonce onto its own bootstrap and bundle tags, and `'strict-dynamic'` lets those tags load the chunks they need. This is what makes the policy worth having — an injected `<script>` cannot guess the nonce.
+
+Public pages keep `script-src 'self' 'unsafe-inline'` instead. A nonce must be generated per request, which forces every page carrying one to be rendered per request; applying it site-wide would trade the catalog's prerendering for a policy protecting pages that hold no session and no privileged data. The sensitive surface gets the strict policy, the cacheable surface stays cacheable. `/admin/login` is the one admin page with nothing request-specific in it, so it calls `connection()` to opt out of prerendering and receive a nonce like the rest of the area.
+
+`style-src` keeps `'unsafe-inline'` on both. A nonce in `style-src` disables inline `style` attributes, which React and the component library emit, and inline styles are not a script-execution vector.
+
+### Response headers
+
+`next.config.ts` sets `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Strict-Transport-Security` and a `Permissions-Policy` that declines camera, microphone, geolocation and the other powerful features this application never uses. `poweredByHeader` is off, so the framework is not advertised. Everything under `/admin` and `/api/admin` is sent `Cache-Control: no-store, private`, so no shared cache ever holds a page rendered for a signed-in administrator.
+
+### Caching
+
+The product page and `GET /api/products/[slug]` are cached with incremental static regeneration and answer with `s-maxage=3600, stale-while-revalidate`. Neither prerenders a path at build time: the page declares `generateStaticParams` returning an empty array and the route handler declares `dynamic = "force-static"`, which is what enables runtime ISR without asking the build for data. This matters because the Docker builder stage has no reachable database, so any build-time query would fail the image.
+
+A successful `PATCH /api/admin/products/[id]` calls `revalidatePath` for the edited product on both surfaces. The slug is not editable, so it names the same cache entry before and after the write. This covers publishing and unpublishing, because a cached 404 lives at the same path as a cached product: unpublishing a product with a warm cache turns both surfaces to 404 rather than leaving a stale 200 that would expose a draft.
+
+The catalog and `GET /api/products` are not cached. Both read `searchParams`, which makes the route dynamic, and caching them would require Cache Components. That was weighed and declined: it enables Partial Prerendering for every route and replaces route unmounting with React `<Activity>` state preservation, which is a large change to carry on a three-product dataset. See `docs/superpowers/specs/2026-09-15-caching-design.md`.
+
+Assets under `/_next/static/` are content-hashed and already carry `public, max-age=31536000, immutable`. Browser caching cannot replace the server cache described here: it is per-visitor, so a first view still reaches the database, and it cannot be purged when an administrator publishes an edit.
+
+Two known limitations. On-demand revalidation clears this application's cache only; a reverse proxy in front of it would keep serving its own copy until `s-maxage` expires. And no automated test covers the cache, so a regression in `revalidatePath` would not fail `npm run verify` — the behavior was verified by hand and the results are recorded in the design document.
+
+Any test that visits `/products/<slug>` or `/api/products/<slug>` must use a slug unique to that test. The Playwright server runs once for the whole suite while the database is truncated between tests, so a reused slug would read a stale cache entry.
+
 ## Prerequisites
 
 - Node.js 24 or newer
@@ -106,13 +138,16 @@ The app is served at http://localhost:3000:
 
 `GEMINI_API_KEY` is read only in `src/server/llm/gemini.ts`, which is a server module. No secret is exposed through a `NEXT_PUBLIC_` variable, and the API key never reaches the browser bundle or any API response.
 
-| Variable         | Purpose                                                   | Default in `.env.example`                                          |
-| ---------------- | --------------------------------------------------------- | ------------------------------------------------------------------ |
-| `DATABASE_URL`   | PostgreSQL connection string for the development database | `postgresql://pcs:pcs@localhost:5432/product_studio?schema=public` |
-| `ADMIN_EMAIL`    | Email of the seeded administrator                         | `admin@example.com`                                                |
-| `ADMIN_PASSWORD` | Password of the seeded administrator                      | empty on purpose — set it yourself                                 |
-| `LLM_MODE`       | `mock` (default, no network) or `live` (real Gemini API)  | `mock`                                                             |
-| `GEMINI_API_KEY` | Required only when `LLM_MODE=live`                        | empty                                                              |
+| Variable              | Purpose                                                          | Default in `.env.example`                                          |
+| --------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `DATABASE_URL`        | PostgreSQL connection string for the development database        | `postgresql://pcs:pcs@localhost:5432/product_studio?schema=public` |
+| `ADMIN_EMAIL`         | Email of the seeded administrator                                | `admin@example.com`                                                |
+| `ADMIN_PASSWORD`      | Password of the seeded administrator                             | empty on purpose — set it yourself                                 |
+| `LLM_MODE`            | `mock` (default, no network) or `live` (real Gemini API)         | `mock`                                                             |
+| `GEMINI_API_KEY`      | Required only when `LLM_MODE=live`                               | empty                                                              |
+| `TRUST_PROXY_HEADERS` | `1` only when a reverse proxy you control sets `X-Forwarded-For` | `0`                                                                |
+
+`TRUST_PROXY_HEADERS` decides whether the login throttle may believe a forwarding header. The header is client-supplied: when the application is reachable directly, as it is under `docker compose --profile full`, anyone can put any value in it and mint a fresh rate-limit bucket per request. So the default is not to trust it, and with no trusted source of a client address the per-address budget is simply not applied — the per-account budget still is. Set it to `1` only behind a reverse proxy that overwrites the header itself.
 
 Two more environment files are committed on purpose: `.env.test` and `.env.e2e`. They contain no secrets — only the connection strings of the two throwaway test databases — and committing them is what makes `npm run verify` reproducible on a clean clone.
 
@@ -134,12 +169,18 @@ The app is served at http://localhost:3000, with the admin account and demo prod
 | ------ | ------------------------------------- | ----- | ------------------------------------ |
 | POST   | `/api/auth/login`                     | —     | Sign in, sets the session cookie     |
 | POST   | `/api/auth/logout`                    | —     | Sign out, deletes the session row    |
-| GET    | `/api/admin/products`                 | admin | Every product, drafts included       |
+| GET    | `/api/admin/products`                 | admin | A page of products, drafts included  |
 | GET    | `/api/admin/products/[id]`            | admin | One product for the editor           |
-| PUT    | `/api/admin/products/[id]`            | admin | Save content, SEO fields and status  |
+| PATCH  | `/api/admin/products/[id]`            | admin | Save content, SEO fields and status  |
 | POST   | `/api/admin/products/[id]/suggestion` | admin | Generate a suggestion, saves nothing |
-| GET    | `/api/products`                       | —     | Published products only              |
+| GET    | `/api/products`                       | —     | A page of published products         |
 | GET    | `/api/products/[slug]`                | —     | One published product                |
+
+Both list endpoints are paginated rather than unbounded: a list endpoint that answers with the whole table is a query whose cost grows with the catalogue and, on the public side, an open invitation to scrape it in one request. They accept `limit` (1 to 100, default 20) and `offset` (0 or more), reject anything outside those bounds with `422`, and answer with the page alongside the totals a client needs to walk it:
+
+```json
+{ "products": [], "total": 137, "limit": 20, "offset": 40 }
+```
 
 Every error shares one body shape, so a client parses failures the same way everywhere:
 
@@ -222,11 +263,11 @@ A development server on port 3000 does not have to be stopped first. Playwright 
 | `tsc --noEmit`            | passed                   |
 | `eslint .`                | passed, no warnings      |
 | `prettier --check .`      | passed                   |
-| Unit tests                | 58 passed in 10 files    |
-| Integration tests         | 26 passed in 6 files     |
-| Playwright API tests      | 18 passed in 4 files     |
-| Playwright browser tests  | 21 passed in 5 files     |
-| **Total automated tests** | **123 passed, 0 failed** |
+| Unit tests                | 110 passed in 17 files   |
+| Integration tests         | 64 passed in 12 files    |
+| Playwright API tests      | 46 passed in 6 files     |
+| Playwright browser tests  | 31 passed in 6 files     |
+| **Total automated tests** | **251 passed, 0 failed** |
 
 GitHub Actions runs the same `npm run verify` on every push to `main` and on every pull request, against PostgreSQL 18 in a service container.
 
@@ -244,11 +285,12 @@ The editor can generate a Ukrainian description and SEO fields from a product's 
 
 ## Known limitations
 
-- **Rate limiting is in-memory.** The login limiter is a fixed window in a `Map`, so it resets on restart and does not coordinate across instances. Correct for a single-process deployment; a shared store would be required behind a load balancer.
+- **Login throttling checks and records in two steps.** The attempt counter lives in PostgreSQL and is shared across instances, but reading the budget and spending it are separate statements. Requests arriving together can each read the same remaining budget, so a burst can overshoot the limit by the width of that window before the counter catches up. An atomic increment that returns the new value would close it.
+- **The public API has no rate limit.** Throttling is keyed on the client address, and the address is only known when a trusted reverse proxy supplies it (see `TRUST_PROXY_HEADERS`), so a limiter in the application would silently do nothing in the default deployment. The public endpoints are bounded per request instead — a page size ceiling on the list endpoints — and volume limiting belongs at the reverse proxy.
 - **Character counters use `String.length`.** A surrogate pair counts as two characters. The client counter and the server-side Zod check use the same measure, so the two never disagree with each other — but for an emoji-heavy description the number shown is not the number of user-perceived characters.
-- **Filtering, searching and sorting happen in memory.** Both the catalog and the admin list load the full set and filter it in the server component. That is the right size of solution for three seeded products and would need SQL-level filtering and pagination for a real catalog.
+- **Catalog paging is offset-based.** Filtering, searching and sorting run in SQL against covering indexes, and both list endpoints take `limit` and `offset`. Offsets are cheap at this depth and get progressively more expensive the further a reader pages; a keyset cursor would be the fix for a catalog deep enough to feel it.
 - **There is no category column.** The category shown in the admin list and used by the catalog filter is derived from the name of a product's first attribute. It is a presentation-layer convenience, not a modelled concept.
-- **Some catalog figures are decorative.** Price, article number, rating and review counts appear in the design mock-ups but are not part of the task's data model. They are generated deterministically from the product slug in `src/lib/demo-catalog.ts` so that the layout matches the design; they are not stored, not editable and not real.
+- **Some catalog figures are decorative.** Price, article number, rating and review counts appear in the design mock-ups but are not part of the task's data model. They are generated deterministically from the product slug in `src/content/demoCatalog.ts` so that the layout matches the design; they are not stored, not editable and not real.
 - **`gemini-3.8-flash` fails often under demand** at the time of writing. In live mode, expect an occasional "not available" error and a second press of the generate button. The mock provider is unaffected, since it makes no network call.
 - **The retry on transport failure is a fixed 500 ms delay**, not exponential backoff with jitter. Sufficient for this feature's scale, not tuned for high request volume.
 - **Descriptions are plain text.** No rich formatting, by design — it is what keeps rendering stored content as text a simple, provable rule.
@@ -262,7 +304,7 @@ Unfinished: the **Shopify import bonus** was planned and cut for time. Nothing o
 
 ## Time spent
 
-About 10 hours in total, including the technical design, the implementation plan, all four levels of tests and this documentation. The task's guideline for the core part with tests is 6–8 hours; the additional time went into the bonus parts.
+About 11 hours in total, including the technical design, the implementation plan, all four levels of tests and this documentation. The task's guideline for the core part with tests is 6–8 hours; the additional time went into the bonus parts.
 
 ## Scripts
 

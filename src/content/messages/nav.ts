@@ -1,0 +1,15 @@
+export const navMessages = {
+  logout: "Вийти",
+  logoutFailed: "Не вдалося вийти. Спробуйте ще раз",
+  account: "Обліковий запис",
+  catalog: "Каталог товарів",
+  descriptions: "Описи & SEO",
+  attributes: "Атрибути & Теги",
+  localization: "Локалізація (UK/EN)",
+  settings: "Налаштування",
+  sectionUnavailable: "Розділ недоступний у цій версії студії",
+  mobileCatalog: "Каталог",
+  mobileContent: "Контент",
+  mobileSeo: "SEO",
+  mobileLog: "Журнал",
+} as const;

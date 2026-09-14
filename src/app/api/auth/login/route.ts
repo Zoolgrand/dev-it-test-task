@@ -1,23 +1,26 @@
 import { cookies } from "next/headers";
+import { SESSION_COOKIE_NAME } from "@/domain/auth/cookie";
 import { loginSchema } from "@/domain/auth/schema";
+import { firstFieldErrors } from "@/domain/fieldErrors";
 import { login } from "@/server/auth/service";
-import { SESSION_COOKIE_NAME } from "@/server/auth/session";
-import {
-  fieldErrorsFromZodError,
-  rateLimited,
-  unauthorized,
-  validationFailed,
-} from "@/server/http/responses";
+import { bodyErrorResponse, parseJsonBody } from "@/server/http/body";
+import { readClientIp } from "@/server/http/clientIp";
+import { rateLimited, unauthorized, validationFailed } from "@/server/http/responses";
 
 export async function POST(request: Request): Promise<Response> {
-  const body: unknown = await request.json();
-  const parsed = loginSchema.safeParse(body);
+  const body = await parseJsonBody(request);
 
-  if (!parsed.success) {
-    return validationFailed(fieldErrorsFromZodError(parsed.error));
+  if (body.status !== "ok") {
+    return bodyErrorResponse(body);
   }
 
-  const outcome = await login(parsed.data);
+  const parsed = loginSchema.safeParse(body.value);
+
+  if (!parsed.success) {
+    return validationFailed(firstFieldErrors(parsed.error));
+  }
+
+  const outcome = await login({ ...parsed.data, ip: readClientIp(request) });
 
   if (outcome.status === "rate_limited") {
     return rateLimited();
@@ -28,7 +31,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE_NAME, outcome.sessionId, {
+  cookieStore.set(SESSION_COOKIE_NAME, outcome.token, {
     httpOnly: true,
     sameSite: "lax",
     path: "/",

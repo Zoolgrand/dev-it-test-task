@@ -31,6 +31,7 @@ services:
       DATABASE_URL: postgresql://pcs:pcs@db:5432/product_studio?schema=public
       LLM_MODE: ${LLM_MODE:-mock}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      TRUST_PROXY_HEADERS: ${TRUST_PROXY_HEADERS:-0}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
     ports:
