@@ -40,6 +40,9 @@ jobs:
       - name: Create test database
         run: PGPASSWORD=pcs psql -h localhost -U pcs -d postgres -c "CREATE DATABASE product_studio_test"
 
+      - name: Create e2e database
+        run: PGPASSWORD=pcs psql -h localhost -U pcs -d postgres -c "CREATE DATABASE product_studio_e2e"
+
       - run: npx prisma generate
 
       - run: npx playwright install --with-deps chromium
