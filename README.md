@@ -34,6 +34,18 @@ npm run dev
 
 The app runs at http://localhost:3000. A single process serves both the pages and the REST API.
 
+## Running everything in Docker
+
+The `full` profile builds the app image and runs it alongside PostgreSQL, applying pending migrations and seeding on startup. It reads `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `LLM_MODE`, and `GEMINI_API_KEY` from the same `.env` file used for local development:
+
+```bash
+docker compose --profile full up --build
+```
+
+The app is served at http://localhost:3000, with the admin account and demo products from `.env` already seeded. Stop it with `docker compose --profile full down`. The image runs as a non-root user, ships no `.env` file, and contains only production dependencies.
+
+`docker compose up -d db` on its own still starts nothing but the database, for running `npm run dev` on the host exactly as before.
+
 ## Running tests
 
 Create the test and end-to-end databases once:

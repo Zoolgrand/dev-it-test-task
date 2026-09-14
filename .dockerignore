@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+coverage
+playwright-report
+test-results
+docs
+PLAN.md
+README.md
+AI-WORKLOG.md
+.env
+.env.test
+.env.e2e
+*.tsbuildinfo
+tests
+e2e
