@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import { notFound } from "next/navigation";
 import { messages } from "@/lib/messages";
 import { getAdminProduct } from "@/server/products/service";
+import { ProductEditor } from "./editor";
 
 export default async function AdminProductPage({
   params,
@@ -27,6 +28,7 @@ export default async function AdminProductPage({
           ))}
         </dl>
       </section>
+      <ProductEditor product={product} />
     </>
   );
 }

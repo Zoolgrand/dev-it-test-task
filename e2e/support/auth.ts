@@ -18,7 +18,7 @@ export function readSessionCookie(setCookieHeader: string | undefined): string {
   return match[1];
 }
 
-export async function logIn(request: APIRequestContext): Promise<void> {
+export async function logIn(request: APIRequestContext): Promise<{ cookie: string }> {
   const response = await request.post("/api/auth/login", {
     data: { email: E2E_ADMIN_EMAIL, password: E2E_ADMIN_PASSWORD },
   });
@@ -26,6 +26,10 @@ export async function logIn(request: APIRequestContext): Promise<void> {
   if (!response.ok()) {
     throw new Error(`Fixture login failed with status ${response.status()}`);
   }
+
+  const sessionId = readSessionCookie(response.headers()["set-cookie"]);
+
+  return { cookie: `${SESSION_COOKIE_NAME}=${sessionId}` };
 }
 
 export async function logInThroughUi(page: Page): Promise<void> {

@@ -23,4 +23,15 @@ export const messages = {
     status: "Статус",
     attributes: "Характеристики",
   },
+  editor: {
+    name: "Назва",
+    description: "Опис товару",
+    seoTitle: "SEO-заголовок",
+    seoDescription: "SEO-опис",
+    status: "Статус",
+    save: "Зберегти",
+    saved: "Збережено",
+    conflict: "Дані змінили в іншому місці, оновіть сторінку",
+    saveFailed: "Не вдалося зберегти. Спробуйте ще раз",
+  },
 } as const;

@@ -1,5 +1,7 @@
 import "server-only";
-import { findAllForAdmin, findByIdForAdmin } from "./repository";
+import { productUpdateSchema } from "@/domain/product/schema";
+import type { ProductUpdate } from "@/domain/product/schema";
+import { findAllForAdmin, findByIdForAdmin, updateContent } from "./repository";
 import { toAdminProduct, toAdminProductListItem } from "./mappers";
 import type { AdminProduct, AdminProductListItem } from "./mappers";
 
@@ -13,4 +15,32 @@ export async function getAdminProduct(id: string): Promise<AdminProduct | null> 
   const row = await findByIdForAdmin(id);
 
   return row ? toAdminProduct(row) : null;
+}
+
+export type UpdateOutcome =
+  | { status: "updated"; product: AdminProduct }
+  | { status: "conflict" }
+  | { status: "not_found" }
+  | { status: "invalid" };
+
+export async function updateProductContent(
+  id: string,
+  input: ProductUpdate,
+): Promise<UpdateOutcome> {
+  const parsed = productUpdateSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return { status: "invalid" };
+  }
+
+  return updateContent({
+    id,
+    expectedUpdatedAt: new Date(parsed.data.expectedUpdatedAt),
+    data: {
+      description: parsed.data.description,
+      seoTitle: parsed.data.seoTitle,
+      seoDescription: parsed.data.seoDescription,
+      status: parsed.data.status,
+    },
+  });
 }
