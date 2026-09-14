@@ -2,6 +2,7 @@
 
 import type { ReactElement } from "react";
 import { useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { messages } from "@/lib/messages";
 
@@ -15,7 +16,8 @@ export function LogoutButton(): ReactElement {
   }
 
   return (
-    <Button variant="outline" onClick={handleClick}>
+    <Button variant="outline" size="sm" onClick={handleClick}>
+      <LogOut className="size-[18px]" aria-hidden />
       {messages.nav.logout}
     </Button>
   );

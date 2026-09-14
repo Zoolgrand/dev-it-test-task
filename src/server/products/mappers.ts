@@ -23,7 +23,9 @@ export type ProductAttributeView = { id: string; name: string; value: string };
 
 export type AdminProductListItem = {
   id: string;
+  slug: string;
   name: string;
+  category: string | null;
   status: ProductStatus;
   updatedAt: string;
 };
@@ -60,7 +62,9 @@ function toAttributeViews(attributes: ProductRow["attributes"]): ProductAttribut
 export function toAdminProductListItem(row: ProductRow): AdminProductListItem {
   return {
     id: row.id,
+    slug: row.slug,
     name: row.name,
+    category: row.attributes[0]?.name ?? null,
     status: row.status,
     updatedAt: row.updatedAt.toISOString(),
   };

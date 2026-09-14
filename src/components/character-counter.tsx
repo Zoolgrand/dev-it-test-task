@@ -5,7 +5,13 @@ export function CharacterCounter({ value, max }: { value: string; max: number })
   const length = value.length;
 
   return (
-    <span className={cn("text-xs text-muted-foreground", length > max && "text-destructive")}>
+    <span
+      className={cn(
+        "shrink-0 font-mono text-code-sm font-medium text-outline",
+        length > max * 0.9 && "text-warning-foreground",
+        length > max && "font-bold text-error",
+      )}
+    >
       {`${length}/${max}`}
     </span>
   );

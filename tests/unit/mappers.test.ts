@@ -50,8 +50,10 @@ describe("product mappers", () => {
   it("exposes exactly these fields in the admin list", () => {
     expect(Object.keys(toAdminProductListItem(row)).sort()).toMatchInlineSnapshot(`
       [
+        "category",
         "id",
         "name",
+        "slug",
         "status",
         "updatedAt",
       ]

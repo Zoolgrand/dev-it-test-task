@@ -13,7 +13,7 @@ test("a saved description survives a page reload", async ({ page }) => {
 
   await page.getByLabel(messages.editor.description).fill("Новий опис");
   await page.getByRole("button", { name: messages.editor.save }).click();
-  await expect(page.getByText(messages.editor.saved)).toBeVisible();
+  await expect(page.getByRole("button", { name: messages.editor.saved })).toBeVisible();
   await page.reload();
 
   await expect(page.getByLabel(messages.editor.description)).toHaveValue("Новий опис");
